@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square Seller Copilot - Inventory Risk Predictor</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Lucide React Icons (simplified versions)
+        const Icon = ({ name, className = "w-6 h-6" }) => {
+            const icons = {
+                AlertTriangle: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                ),
+                TrendingDown: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                    </svg>
+                ),
+                TrendingUp: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                ),
+                Package: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                ),
+                DollarSign: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                ),
+                Calendar: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                ),
+                ChevronRight: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                ),
+                RefreshCw: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                ),
+                Settings: (
+                    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                )
+            };
+            return icons[name] || null;
+        };
+
+        // Square API Integration
+        const SquareAPI = {
+            accessToken: null,
+            baseUrl: 'https://connect.squareup.com/v2',
+            
+            setAccessToken(token) {
+                this.accessToken = token;
+            },
+            
+            getMockInventoryData() {
+                return [
+                    {
+                        id: '1',
+                        name: 'Organic Coffee Beans - Dark Roast',
+                        sku: 'COFFEE-001',
+                        currentStock: 45,
+                        category: 'Beverages',
+                        costPerUnit: 12.50,
+                        pricePerUnit: 24.99,
+                        reorderPoint: 50,
+                        maxStock: 200
+                    },
+                    {
+                        id: '2',
+                        name: 'Almond Milk Latte Mix',
+                        sku: 'LATTE-002',
+                        currentStock: 8,
+                        category: 'Beverages',
+                        costPerUnit: 8.00,
+                        pricePerUnit: 16.99,
+                        reorderPoint: 25,
+                        maxStock: 100
+                    },
+                    {
+                        id: '3',
+                        name: 'Chocolate Croissant',
+                        sku: 'PASTRY-003',
+                        currentStock: 120,
+                        category: 'Bakery',
+                        costPerUnit: 2.50,
+                        pricePerUnit: 5.99,
+                        reorderPoint: 30,
+                        maxStock: 80
+                    },
+                    {
+                        id: '4',
+                        name: 'Sourdough Bread Loaf',
+                        sku: 'BREAD-004',
+                        currentStock: 15,
+                        category: 'Bakery',
+                        costPerUnit: 3.00,
+                        pricePerUnit: 7.99,
+                        reorderPoint: 20,
+                        maxStock: 60
+                    },
+                    {
+                        id: '5',
+                        name: 'House Blend Tea (50 bags)',
+                        sku: 'TEA-005',
+                        currentStock: 180,
+                        category: 'Beverages',
+                        costPerUnit: 15.00,
+                        pricePerUnit: 29.99,
+                        reorderPoint: 40,
+                        maxStock: 150
+                    },
+                    {
+                        id: '6',
+                        name: 'Blueberry Muffin',
+                        sku: 'MUFFIN-006',
+                        currentStock: 3,
+                        category: 'Bakery',
+                        costPerUnit: 1.75,
+                        pricePerUnit: 4.49,
+                        reorderPoint: 15,
+                        maxStock: 48
+                    }
+                ];
+            },
+            
+            getMockSalesData(days) {
+                const items = this.getMockInventoryData();
+                const sales = [];
+                
+                for (let i = 0; i < days; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    
+                    items.forEach(item => {
+                        const baseDaily = item.reorderPoint / 7;
+                        const variance = (Math.random() - 0.5) * baseDaily * 0.4;
+                        const quantity = Math.max(1, Math.round(baseDaily + variance));
+                        
+                        sales.push({
+                            itemId: item.id,
+                            itemName: item.name,
+                            quantity: quantity,
+                            date: date.toISOString().split('T')[0],
+                            revenue: quantity * item.pricePerUnit
+                        });
+                    });
+                }
+                
+                return sales;
+            },
+            
+            async fetchInventory() {
+                return new Promise(resolve => {
+                    setTimeout(() => resolve(this.getMockInventoryData()), 500);
+                });
+            },
+            
+            async fetchSalesHistory(days = 30) {
+                return new Promise(resolve => {
+                    setTimeout(() => resolve(this.getMockSalesData(days)), 500);
+                });
+            }
+        };
+
+        // Risk Analysis Engine
+        const RiskAnalyzer = {
+            calculateDailyVelocity(salesData, itemId) {
+                const itemSales = salesData.filter(s => s.itemId === itemId);
+                if (itemSales.length === 0) return 0;
+                
+                const totalQuantity = itemSales.reduce((sum, s) => sum + s.quantity, 0);
+                const uniqueDays = new Set(itemSales.map(s => s.date)).size;
+                
+                return uniqueDays > 0 ? totalQuantity / uniqueDays : 0;
+            },
+            
+            calculateStockoutRisk(item, dailyVelocity) {
+                if (dailyVelocity === 0) return { risk: 'low', daysUntilStockout: 999, severity: 0 };
+                
+                const daysUntilStockout = item.currentStock / dailyVelocity;
+                
+                let risk = 'low';
+                let severity = 0;
+                
+                if (daysUntilStockout <= 2) {
+                    risk = 'critical';
+                    severity = 100;
+                } else if (daysUntilStockout <= 5) {
+                    risk = 'high';
+                    severity = 75;
+                } else if (daysUntilStockout <= 10) {
+                    risk = 'medium';
+                    severity = 50;
+                } else {
+                    severity = 25;
+                }
+                
+                return { risk, daysUntilStockout, severity };
+            },
+            
+            calculateOverstockRisk(item, dailyVelocity) {
+                if (dailyVelocity === 0) {
+                    return { risk: 'high', daysOfStock: 999, severity: 80, tiedUpCapital: item.currentStock * item.costPerUnit };
+                }
+                
+                const daysOfStock = item.currentStock / dailyVelocity;
+                const tiedUpCapital = item.currentStock * item.costPerUnit;
+                
+                let risk = 'low';
+                let severity = 0;
+                
+                if (daysOfStock > 60) {
+                    risk = 'high';
+                    severity = 85;
+                } else if (daysOfStock > 30) {
+                    risk = 'medium';
+                    severity = 60;
+                } else if (item.currentStock > item.maxStock) {
+                    risk = 'high';
+                    severity = 75;
+                } else {
+                    severity = 20;
+                }
+                
+                return { risk, daysOfStock, severity, tiedUpCapital };
+            },
+            
+            generateRecommendation(item, stockoutRisk, overstockRisk, dailyVelocity) {
+                const recommendations = [];
+                
+                if (stockoutRisk.risk === 'critical' || stockoutRisk.risk === 'high') {
+                    const reorderQuantity = Math.ceil(dailyVelocity * 14);
+                    recommendations.push({
+                        type: 'reorder',
+                        priority: 'urgent',
+                        action: `Reorder ${reorderQuantity} units immediately`,
+                        reason: `Only ${Math.floor(stockoutRisk.daysUntilStockout)} days of stock remaining`,
+                        impact: `Prevent $${Math.round(dailyVelocity * item.pricePerUnit * stockoutRisk.daysUntilStockout)} in lost revenue`
+                    });
+                } else if (stockoutRisk.risk === 'medium') {
+                    const reorderQuantity = Math.ceil(dailyVelocity * 14);
+                    recommendations.push({
+                        type: 'reorder',
+                        priority: 'normal',
+                        action: `Plan to reorder ${reorderQuantity} units within 5 days`,
+                        reason: `Stock levels approaching reorder point`,
+                        impact: `Maintain healthy inventory levels`
+                    });
+                }
+                
+                if (overstockRisk.risk === 'high') {
+                    if (overstockRisk.daysOfStock > 60) {
+                        recommendations.push({
+                            type: 'reduce',
+                            priority: 'high',
+                            action: `Run promotion or reduce reorder quantity by 50%`,
+                            reason: `Over 60 days of inventory on hand`,
+                            impact: `Free up $${overstockRisk.tiedUpCapital.toFixed(2)} in tied capital`
+                        });
+                    } else {
+                        recommendations.push({
+                            type: 'reduce',
+                            priority: 'medium',
+                            action: `Pause reordering until stock drops to ${item.reorderPoint} units`,
+                            reason: `Exceeding maximum recommended stock levels`,
+                            impact: `Reduce storage costs and capital tie-up`
+                        });
+                    }
+                } else if (overstockRisk.risk === 'medium') {
+                    recommendations.push({
+                        type: 'monitor',
+                        priority: 'low',
+                        action: `Monitor stock levels and adjust reorder timing`,
+                        reason: `Inventory levels higher than optimal`,
+                        impact: `Optimize cash flow`
+                    });
+                }
+                
+                if (recommendations.length === 0) {
+                    recommendations.push({
+                        type: 'healthy',
+                        priority: 'info',
+                        action: `No action needed - stock levels are healthy`,
+                        reason: `Current inventory is well-balanced`,
+                        impact: `Continue current ordering patterns`
+                    });
+                }
+                
+                return recommendations;
+            },
+            
+            analyzeInventory(inventory, salesData) {
+                return inventory.map(item => {
+                    const dailyVelocity = this.calculateDailyVelocity(salesData, item.id);
+                    const stockoutRisk = this.calculateStockoutRisk(item, dailyVelocity);
+                    const overstockRisk = this.calculateOverstockRisk(item, dailyVelocity);
+                    const recommendations = this.generateRecommendation(item, stockoutRisk, overstockRisk, dailyVelocity);
+                    
+                    const overallRisk = Math.max(stockoutRisk.severity, overstockRisk.severity);
+                    
+                    return {
+                        ...item,
+                        dailyVelocity,
+                        stockoutRisk,
+                        overstockRisk,
+                        recommendations,
+                        overallRisk
+                    };
+                });
+            }
+        };
+
+        // Main App Component
+        function SquareSellerCopilot() {
+            const [inventory, setInventory] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [filterRisk, setFilterRisk] = useState('all');
+            
+            useEffect(() => {
+                loadData();
+            }, []);
+            
+            const loadData = async () => {
+                setIsLoading(true);
+                
+                const inventoryData = await SquareAPI.fetchInventory();
+                const salesData = await SquareAPI.fetchSalesHistory(30);
+                const analyzed = RiskAnalyzer.analyzeInventory(inventoryData, salesData);
+                
+                analyzed.sort((a, b) => b.overallRisk - a.overallRisk);
+                
+                setInventory(analyzed);
+                setIsLoading(false);
+            };
+            
+            const getRiskBadgeColor = (risk) => {
+                if (risk === 'critical') return 'bg-red-600 text-white';
+                if (risk === 'high') return 'bg-orange-600 text-white';
+                if (risk === 'medium') return 'bg-yellow-500 text-white';
+                return 'bg-green-600 text-white';
+            };
+            
+            const getPriorityColor = (priority) => {
+                if (priority === 'urgent') return 'bg-red-100 text-red-800 border-red-300';
+                if (priority === 'high') return 'bg-orange-100 text-orange-800 border-orange-300';
+                if (priority === 'normal' || priority === 'medium') return 'bg-blue-100 text-blue-800 border-blue-300';
+                return 'bg-gray-100 text-gray-800 border-gray-300';
+            };
+            
+            const filteredInventory = inventory.filter(item => {
+                if (filterRisk === 'all') return true;
+                if (filterRisk === 'stockout') return item.stockoutRisk.risk === 'critical' || item.stockoutRisk.risk === 'high';
+                if (filterRisk === 'overstock') return item.overstockRisk.risk === 'high';
+                return true;
+            });
+            
+            const criticalAlerts = inventory.filter(item => 
+                item.stockoutRisk.risk === 'critical' || 
+                (item.overstockRisk.risk === 'high' && item.overstockRisk.daysOfStock > 60)
+            ).length;
+            
+            const totalCapitalTied = inventory.reduce((sum, item) => 
+                sum + (item.currentStock * item.costPerUnit), 0
+            );
+            
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+                    {/* Header */}
+                    <div className="bg-white border-b border-slate-200 shadow-sm">
+                        <div className="max-w-7xl mx-auto px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                        <Icon name="Package" className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold text-slate-900">Square Seller Copilot</h1>
+                                        <p className="text-sm text-slate-600">Inventory Risk Predictor (Demo Mode)</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={loadData}
+                                    disabled={isLoading}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <Icon name="RefreshCw" className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Dashboard */}
+                    <div className="max-w-7xl mx-auto px-6 py-6">
+                        {/* Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-600">Critical Alerts</span>
+                                    <Icon name="AlertTriangle" className="w-5 h-5 text-red-600" />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900">{criticalAlerts}</div>
+                                <p className="text-sm text-slate-500 mt-1">Require immediate action</p>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-600">Total Items</span>
+                                    <Icon name="Package" className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900">{inventory.length}</div>
+                                <p className="text-sm text-slate-500 mt-1">Being monitored</p>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-600">Capital Tied Up</span>
+                                    <Icon name="DollarSign" className="w-5 h-5 text-green-600" />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900">${totalCapitalTied.toFixed(0)}</div>
+                                <p className="text-sm text-slate-500 mt-1">In current inventory</p>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-slate-600">Analysis Period</span>
+                                    <Icon name="Calendar" className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div className="text-3xl font-bold text-slate-900">30</div>
+                                <p className="text-sm text-slate-500 mt-1">Days of sales data</p>
+                            </div>
+                        </div>
+                        
+                        {/* Filters */}
+                        <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-slate-700">Filter by:</span>
+                                <button
+                                    onClick={() => setFilterRisk('all')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        filterRisk === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                                >
+                                    All Items
+                                </button>
+                                <button
+                                    onClick={() => setFilterRisk('stockout')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        filterRisk === 'stockout' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                                >
+                                    Stockout Risks
+                                </button>
+                                <button
+                                    onClick={() => setFilterRisk('overstock')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        filterRisk === 'overstock' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    }`}
+                                >
+                                    Overstock Risks
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Inventory List */}
+                        <div className="space-y-4">
+                            {isLoading ? (
+                                <div className="bg-white rounded-lg border border-slate-200 p-12 text-center shadow-sm">
+                                    <Icon name="RefreshCw" className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                                    <p className="text-slate-600">Analyzing inventory...</p>
+                                </div>
+                            ) : (
+                                filteredInventory.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className={`bg-white rounded-lg border-2 shadow-sm transition-all cursor-pointer hover:shadow-md ${
+                                            selectedItem?.id === item.id ? 'border-blue-500 shadow-lg' : 'border-slate-200'
+                                        }`}
+                                        onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+                                    >
+                                        <div className="p-5">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="text-lg font-semibold text-slate-900">{item.name}</h3>
+                                                        <span className="text-sm text-slate-500">SKU: {item.sku}</span>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                                        <div>
+                                                            <p className="text-xs text-slate-500 mb-1">Current Stock</p>
+                                                            <p className="text-lg font-bold text-slate-900">{item.currentStock} units</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-slate-500 mb-1">Daily Velocity</p>
+                                                            <p className="text-lg font-bold text-slate-900">{item.dailyVelocity.toFixed(1)} units/day</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-slate-500 mb-1">Stockout Risk</p>
+                                                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getRiskBadgeColor(item.stockoutRisk.risk)}`}>
+                                                                {item.stockoutRisk.risk.toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-slate-500 mb-1">Overstock Risk</p>
+                                                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getRiskBadgeColor(item.overstockRisk.risk)}`}>
+                                                                {item.overstockRisk.risk.toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                                                            <div
+                                                                className={`h-full transition-all ${
+                                                                    item.overallRisk >= 75 ? 'bg-red-500' :
+                                                                    item.overallRisk >= 50 ? 'bg-orange-500' :
+                                                                    item.overallRisk >= 25 ? 'bg-yellow-500' : 'bg-green-500'
+                                                                }`}
+                                                                style={{ width: `${Math.min(item.overallRisk, 100)}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-sm font-medium text-slate-600">{item.overallRisk}%</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <Icon 
+                                                    name="ChevronRight" 
+                                                    className={`w-6 h-6 text-slate-400 transition-transform ml-4 ${selectedItem?.id === item.id ? 'rotate-90' : ''}`}
+                                                />
+                                            </div>
+                                            
+                                            {/* Expanded Details */}
+                                            {selectedItem?.id === item.id && (
+                                                <div className="mt-6 pt-6 border-t border-slate-200">
+                                                    <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                                                        <Icon name="AlertTriangle" className="w-5 h-5 text-blue-600" />
+                                                        Recommendations
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {item.recommendations.map((rec, idx) => (
+                                                            <div key={idx} className={`rounded-lg border-2 p-4 ${getPriorityColor(rec.priority)}`}>
+                                                                <div className="flex items-start gap-3">
+                                                                    <span className="px-2 py-1 rounded text-xs font-bold uppercase bg-white bg-opacity-50">
+                                                                        {rec.priority}
+                                                                    </span>
+                                                                    <div className="flex-1">
+                                                                        <p className="font-semibold mb-1">{rec.action}</p>
+                                                                        <p className="text-sm mb-2">{rec.reason}</p>
+                                                                        <p className="text-xs font-medium">💡 Impact: {rec.impact}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="max-w-7xl mx-auto px-6 py-8 text-center text-sm text-slate-500">
+                        <p>Square Seller Copilot • Inventory Risk Predictor • Demo Mode with Sample Data</p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<SquareSellerCopilot />, document.getElementById('root'));
+    </script>
+</body>
+</html>
