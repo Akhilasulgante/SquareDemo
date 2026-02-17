@@ -152,9 +152,10 @@ Previously chose specialized POS systems
 
 ## Key Takeaway
 
-This isn't just an inventory tool—it's a demonstration of how Square can evolve from transaction processing to predictive business intelligence.
+This isn't just an inventory tool, it's a demonstration of how Square can evolve from transaction processing to predictive business intelligence.
 
-This prototype helps me demonstrate my:
+# This prototype helps me showcase my:
+
 **Product thinking** (seller empathy, strategic vision)  
 **Technical execution** (clean architecture, production-ready)  
 **Business acumen** (market sizing, revenue model, metrics)  
