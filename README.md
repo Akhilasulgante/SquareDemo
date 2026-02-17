@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 The Opportunity
+## The Opportunity
 
 **Problem**: Sellers have all the transaction data they need to optimize inventory, but lack the intelligence layer to turn data into predictions. Result: stockouts lose revenue, overstock ties up capital.
 
@@ -14,7 +14,7 @@
 
 ---
 
-## 📊 Market & Revenue Opportunity
+## Market & Revenue Opportunity
 
 ### Addressable Market
 
@@ -36,7 +36,7 @@
 
 ---
 
-## 🏗️ Product Architecture
+## Product Architecture
 
 ### Core Intelligence Engine
 
@@ -60,7 +60,7 @@ Transaction Data → Sales Velocity Analysis → Risk Prediction → Actionable 
 
 ---
 
-## 🗺️ Phased Roadmap
+## Phased Roadmap
 
 ### Phase 1: MVP Dashboard (Current)
 
@@ -85,7 +85,7 @@ Transaction Data → Sales Velocity Analysis → Risk Prediction → Actionable 
 
 ---
 
-## 💡 Strategic Value
+## Strategic Value
 
 ### 1. Seller Success = Transaction Growth
 
@@ -113,7 +113,7 @@ Previously chose specialized POS systems
 
 ---
 
-## 📏 Success Metrics
+## Success Metrics
 
 ### Phase 2 Beta (100 sellers)
 
@@ -138,7 +138,7 @@ Previously chose specialized POS systems
 
 ---
 
-## 🔥 Why This Matters Now
+## Why This Matters Now
 
 **Market Timing**: Sellers are more data-driven. Manual inventory doesn't scale.
 
@@ -150,7 +150,7 @@ Previously chose specialized POS systems
 
 ---
 
-## 💬 Key Takeaway
+## Key Takeaway
 
 This isn't just an inventory tool—it's a demonstration of how Square can evolve from transaction processing to predictive business intelligence.
 
