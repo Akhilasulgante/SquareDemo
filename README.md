@@ -1,332 +1,166 @@
-# Square Seller Copilot - Inventory Risk Predictor
+# Seller Copilot - Executive Summary
 
-A React-based dashboard that helps Square sellers predict and prevent inventory stockouts and overstock situations using AI-powered risk analysis.
-
-## Features
-
-✅ **Real-time Inventory Analysis**
-- Stockout risk detection with days-until-stockout predictions
-- Overstock identification with capital tie-up calculations
-- Daily sales velocity tracking
-
-✅ **Smart Recommendations**
-- Priority-based action items (urgent, high, normal, low)
-- Reorder quantity suggestions
-- Cost-saving opportunities
-
-✅ **Visual Dashboard**
-- Risk severity indicators with color coding
-- Filtering by risk type (stockout/overstock)
-- Expandable item details with comprehensive analysis
-
-✅ **Square API Integration**
-- Connects to your Square account for live data
-- Fetches inventory levels and sales history
-- Falls back to demo data for testing
-
-## Quick Start
-
-### 1. Clone/Download the Files
-
-Save `square-copilot.jsx` to your project directory.
-
-### 2. Install Dependencies
-
-```bash
-npm install react lucide-react
-# or
-yarn add react lucide-react
-```
-
-### 3. Run with Demo Data (No API Key Required)
-
-You can immediately test the application with realistic demo data:
-
-```javascript
-import SquareSellerCopilot from './square-copilot';
-
-function App() {
-  return <SquareSellerCopilot />;
-}
-
-export default App;
-```
-
-### 4. Connect to Square API (Optional)
-
-To use your real Square data:
-
-1. Go to [Square Developer Dashboard](https://developer.squareup.com/apps)
-2. Create a new application or select existing one
-3. Generate an access token (Sandbox for testing, Production for live data)
-4. In the app, click the Settings icon (⚙️)
-5. Paste your access token and click "Save & Refresh Data"
-
-## Square API Setup (Detailed)
-
-### Step 1: Create a Square Developer Account
-
-1. Visit https://developer.squareup.com/
-2. Sign in with your Square account
-3. Click "Create Your First Application"
-
-### Step 2: Configure Your Application
-
-1. Name your application (e.g., "Inventory Copilot")
-2. Select the appropriate environment:
-   - **Sandbox**: For testing with fake data
-   - **Production**: For real business data
-
-### Step 3: Set Permissions
-
-Your app needs the following OAuth permissions:
-- `ITEMS_READ` - Read catalog items and inventory
-- `ORDERS_READ` - Read sales order history
-
-### Step 4: Generate Access Token
-
-1. Go to the "Credentials" tab
-2. Copy your **Access Token**
-3. Keep this token secure - treat it like a password
-
-### Step 5: Test Your Integration
-
-```javascript
-// Test the API connection
-const SquareAPI = {
-  accessToken: 'YOUR_TOKEN_HERE',
-  baseUrl: 'https://connect.squareup.com/v2',
-  
-  async testConnection() {
-    const response = await fetch(`${this.baseUrl}/catalog/list`, {
-      headers: {
-        'Square-Version': '2024-01-18',
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    return response.ok;
-  }
-};
-```
-
-## How the Risk Analysis Works
-
-### Stockout Risk Detection
-
-The system calculates:
-
-1. **Daily Velocity**: Average units sold per day over the past 30 days
-2. **Days Until Stockout**: Current stock ÷ Daily velocity
-3. **Risk Level**:
-   - **Critical** (≤2 days): Immediate reorder needed
-   - **High** (≤5 days): Reorder within 24-48 hours
-   - **Medium** (≤10 days): Plan reorder within a week
-   - **Low** (>10 days): Healthy stock levels
-
-### Overstock Risk Detection
-
-The system identifies:
-
-1. **Days of Stock**: How many days current inventory will last
-2. **Capital Tied Up**: Total cost of inventory on hand
-3. **Risk Level**:
-   - **High**: >60 days of stock OR exceeds max stock level
-   - **Medium**: 30-60 days of stock
-   - **Low**: <30 days of stock
-
-### Recommendation Engine
-
-Based on the analysis, the system generates:
-
-- **Reorder recommendations**: Quantity and timing
-- **Promotion suggestions**: For overstock items
-- **Capital optimization**: Freeing up tied funds
-- **Risk prevention**: Avoiding stockouts
-
-## Customization
-
-### Adjusting Risk Thresholds
-
-Edit the `RiskAnalyzer.calculateStockoutRisk()` method:
-
-```javascript
-calculateStockoutRisk(item, dailyVelocity) {
-  const daysUntilStockout = item.currentStock / dailyVelocity;
-  
-  // Customize these thresholds
-  if (daysUntilStockout <= 2) {  // Change from 2 to your preference
-    risk = 'critical';
-  } else if (daysUntilStockout <= 5) {  // Change from 5
-    risk = 'high';
-  }
-  // ... rest of logic
-}
-```
-
-### Changing Analysis Period
-
-Modify the sales history fetch:
-
-```javascript
-// In loadData() function
-const salesData = await SquareAPI.fetchSalesHistory(60); // Change from 30 to 60 days
-```
-
-### Adding Custom Categories
-
-Filter by product category:
-
-```javascript
-const filteredInventory = inventory.filter(item => {
-  if (selectedCategory !== 'all') {
-    return item.category === selectedCategory;
-  }
-  return true;
-});
-```
-
-## Integration with Existing Square Apps
-
-### As a React Component
-
-```javascript
-import SquareSellerCopilot from './square-copilot';
-
-function Dashboard() {
-  return (
-    <div>
-      <YourExistingHeader />
-      <SquareSellerCopilot />
-      <YourExistingFooter />
-    </div>
-  );
-}
-```
-
-### Embedding in Existing UI
-
-```javascript
-// Extract just the data analysis
-import { SquareAPI, RiskAnalyzer } from './square-copilot';
-
-async function getInventoryRisks() {
-  const inventory = await SquareAPI.fetchInventory();
-  const sales = await SquareAPI.fetchSalesHistory(30);
-  return RiskAnalyzer.analyzeInventory(inventory, sales);
-}
-```
-
-## API Rate Limits
-
-Square API has rate limits:
-- **Sandbox**: 100 requests per minute
-- **Production**: 500 requests per minute per seller
-
-The app minimizes API calls by:
-- Caching inventory data
-- Only refreshing on user request
-- Batching similar requests
-
-## Security Best Practices
-
-1. **Never commit tokens to Git**
-   ```bash
-   echo "*.env" >> .gitignore
-   ```
-
-2. **Use environment variables**
-   ```javascript
-   const token = process.env.REACT_APP_SQUARE_TOKEN;
-   ```
-
-3. **Implement token refresh**
-   - Use OAuth for long-term access
-   - Refresh tokens before expiration
-
-4. **Server-side API calls** (Recommended for production)
-   ```javascript
-   // Instead of calling Square API from browser:
-   const response = await fetch('/api/inventory'); // Your backend
-   ```
-
-## Troubleshooting
-
-### "API request failed" Error
-
-**Cause**: Invalid token or expired credentials
-
-**Solution**:
-1. Verify token is correct
-2. Check token permissions include `ITEMS_READ` and `ORDERS_READ`
-3. Ensure you're using the right environment (sandbox vs production)
-
-### No inventory showing
-
-**Cause**: Empty catalog or no sales data
-
-**Solution**:
-1. Add test items in Square Dashboard
-2. Create test orders
-3. Use demo data first to verify app works
-
-### CORS errors
-
-**Cause**: Browser blocking direct API calls
-
-**Solution**:
-1. Implement a backend proxy
-2. Use Square's OAuth flow
-3. Deploy with proper CORS headers
-
-## Deployment
-
-### Vercel (Recommended)
-
-```bash
-npm run build
-vercel deploy
-```
-
-### Netlify
-
-```bash
-npm run build
-netlify deploy --prod
-```
-
-### Custom Server
-
-```bash
-npm run build
-# Upload build/ directory to your server
-```
-
-## Future Enhancements
-
-- [ ] Email/SMS alerts for critical stockouts
-- [ ] Integration with suppliers for auto-reordering
-- [ ] Seasonal trend analysis
-- [ ] Multi-location inventory support
-- [ ] Cash flow forecasting
-- [ ] Export reports to PDF/Excel
-
-## Support
-
-For Square API issues:
-- Documentation: https://developer.squareup.com/docs
-- Community: https://developer.squareup.com/forums
-
-For app issues:
-- Check console for error messages
-- Verify API token permissions
-- Test with demo data first
-
-## License
-
-MIT License - Feel free to use and modify for your business needs.
+## Overview for APM Reviewers
 
 ---
 
-**Built for Square sellers who want to optimize inventory and prevent lost sales.**
+## 🎯 The Opportunity
+
+**Problem**: Sellers have all the transaction data they need to optimize inventory, but lack the intelligence layer to turn data into predictions. Result: stockouts lose revenue, overstock ties up capital.
+
+**Solution**: Seller Copilot analyzes transaction patterns to predict inventory risks before they happen, then recommends exact actions (reorder 50 units by Thursday).
+
+**Strategic Fit**: Transforms Square from "payment processor" to "business operating system" with predictive intelligence.
+
+---
+
+## 📊 Market & Revenue Opportunity
+
+### Addressable Market
+
+- **Total Square Sellers**: 4M
+- **Inventory-Focused**: 1.2M (30%)
+- **Target Segment ($500K+ GMV)**: 120K sellers
+
+### Revenue Model
+
+- **Freemium**: Basic alerts free (drives ecosystem stickiness)
+- **Premium**: $49/mo (multi-location, advanced features)
+- **Enterprise**: Custom pricing (20+ locations)
+
+### Financial Projections
+
+- **Conservative (5% adoption)**: 6K sellers × $49 = **$294K MRR**
+- **Optimistic (15% adoption)**: 18K sellers × $49 = **$882K MRR**
+- **Primary value**: Increased transaction volume from seller success (15-25% revenue growth)
+
+---
+
+## 🏗️ Product Architecture
+
+### Core Intelligence Engine
+
+```
+Transaction Data → Sales Velocity Analysis → Risk Prediction → Actionable Recommendations
+```
+
+**Example**:
+
+- Latte Mix: 8 units in stock, selling 3.6/day
+- Prediction: Stockout in 2 days (CRITICAL)
+- Recommendation: Reorder 50 units today
+- Impact: Prevents $245 in lost revenue
+
+### Integration Points
+
+- **Catalog API**: Real-time inventory levels
+- **Orders API**: 30-day transaction history
+- **Dashboard**: Native integration (Phase 2)
+- **OAuth 2.0**: Secure seller authorization
+
+---
+
+## 🗺️ Phased Roadmap
+
+### Phase 1: MVP Dashboard (Current)
+
+✅ Velocity analysis, risk scoring, recommendations  
+✅ Visual dashboard with filtering  
+✅ Production-ready architecture  
+**Status**: Prototype complete
+
+### Phase 2: API Integration (3 months)
+
+- OAuth + real-time API sync
+- Multi-location support
+- Email/SMS alerts
+- Dashboard integration
+
+### Phase 3: Autonomous (12-18 months)
+
+- Auto-reordering with seller approval
+- Supplier marketplace network
+- ML-powered seasonal predictions
+- Inventory financing products
+
+---
+
+## 💡 Strategic Value
+
+### 1. Seller Success = Transaction Growth
+
+Optimized inventory → 15-25% revenue increase → more Square transactions
+
+### 2. Platform Moat
+
+Transaction data → predictive intelligence → competitive advantage  
+Competitors can't replicate without the data depth
+
+### 3. Ecosystem Lock-In
+
+More value from Square = lower churn  
+Intelligence compounds with usage (data network effects)
+
+### 4. Cross-Sell Engine
+
+Natural upsell to Marketing, Capital, Invoices  
+Each integration increases platform stickiness
+
+### 5. Market Expansion
+
+Makes Square compelling for inventory-heavy verticals (retail, wholesale, grocery)  
+Previously chose specialized POS systems
+
+---
+
+## 📏 Success Metrics
+
+### Phase 2 Beta (100 sellers)
+
+- 30% reduction in stockout incidents
+- 15% improvement in inventory turnover
+- NPS score >50
+- 40% cross-sell to Marketing or Invoices
+
+### Phase 3 Scale (10K sellers)
+
+- 50K+ active monthly users
+- $500K MRR from premium subscriptions
+- 5% lift in Square transaction volume for cohort
+- 25% of users engage with 2+ integrated products
+
+### Phase 4 Platform (50K sellers)
+
+- $10M monthly in supplier transaction volume
+- 20% of sellers using autonomous reordering
+- 15% of Square Capital portfolio is inventory-secured loans
+- Net Promoter Score >60
+
+---
+
+## 🔥 Why This Matters Now
+
+**Market Timing**: Sellers are more data-driven. Manual inventory doesn't scale.
+
+**Technical Readiness**: Square APIs are mature. OAuth, webhooks, catalog—all production-ready.
+
+**Strategic Inflection**: Square is expanding beyond payments. This accelerates that vision.
+
+**Network Effects**: Supplier marketplace creates two-sided marketplace (phase 4). First mover advantage.
+
+---
+
+## 💬 Key Takeaway
+
+This isn't just an inventory tool—it's a demonstration of how Square can evolve from transaction processing to predictive business intelligence.
+
+This prototype helps me demonstrate my:
+**Product thinking** (seller empathy, strategic vision)  
+**Technical execution** (clean architecture, production-ready)  
+**Business acumen** (market sizing, revenue model, metrics)  
+**Square fit** (ecosystem integration, cross-product opportunities)
+
+---
+
+**Built for Square APM Application**  
+**Prototype Status**: Functional and ready to demo
